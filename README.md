@@ -1,5 +1,5 @@
 ****************************************************************************************************************************************
-Below are the updated updated steps with best practices for your Spring Boot application deployed on EKS using GitHub Actions for CI/CD:
+Below are the steps with best practices for your Spring Boot application deployed on EKS using GitHub Actions for CI/CD:
 ****************************************************************************************************************************************
 
 # Spring Boot Application on Amazon EKS
