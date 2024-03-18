@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-spring-app-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-spring-app
+  template:
+    metadata:
+      labels:
+        app: my-spring-app
+    spec:
+     containers:
+     - name: my-spring-app
+       image:  804677980227.dkr.ecr.us-east-1.amazonaws.com/demo-rbk:v1.1.0
+       ports:
+       - containerPort: 8080

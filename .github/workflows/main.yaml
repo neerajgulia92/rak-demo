@@ -1,0 +1,42 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+
+      - name: Run Tests
+        run: ./mvnw test
+
+      - name: Login to Container Registry
+        run: echo $CONTAINER_REGISTRY_PASSWORD | docker login -u ${{ secrets.CONTAINER_REGISTRY_USERNAME }} --password-stdin
+
+      - name: Build Docker image
+        run: docker build -t my-spring-app .
+
+      - name: Push Docker image to Container Registry
+        run: docker tag my-spring-app ${{ secrets.CONTAINER_REGISTRY_USERNAME }}/my-spring-app
+        run: docker push ${{ secrets.CONTAINER_REGISTRY_USERNAME }}/my-spring-app
+
+      - name: Deploy to EKS
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG_DATA" | base64 --decode > ~/.kube/config
+          kubectl apply -f kubernetes/deployment.yaml
+          kubectl apply -f kubernetes/service.yaml
