@@ -59,3 +59,6 @@ The application is deployed to Amazon EKS using Kubernetes deployment and servic
 
 # Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+# NOTE
+Note that enabling quality gates based on SAST scan results and marking the build as failed if there are high or critical bugs would typically require integration with a specific SAST tool's API or CLI, which may not be directly supported by GitHub Actions. You may need to implement this logic in a separate script or tool that can be called from your GitHub Actions workflow.
