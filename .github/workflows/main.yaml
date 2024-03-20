@@ -8,35 +8,89 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up JDK 17
+      - name: Secret scanning
+        uses: gregorriegler/github-action-secrets-scanner@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ignorePatterns: '["**/*.pem","**/*.crt","**/*.key"]'
+        if: github.event_name == 'push'  # Run only on push events
+
+      - name: Set up JDK 11
         uses: actions/setup-java@v2
         with:
           distribution: 'adopt'
-          java-version: '17'
+          java-version: '11'
 
-      - name: Run Tests
-        run: ./mvnw test
-
-      - name: Login to Container Registry
-        run: echo $CONTAINER_REGISTRY_PASSWORD | docker login -u ${{ secrets.CONTAINER_REGISTRY_USERNAME }} --password-stdin
-
-      - name: Build Docker image
-        run: docker build -t my-spring-app .
-
-      - name: Push Docker image to Container Registry
-        run: docker tag my-spring-app ${{ secrets.CONTAINER_REGISTRY_USERNAME }}/my-spring-app
-        run: docker push ${{ secrets.CONTAINER_REGISTRY_USERNAME }}/my-spring-app
-
-      - name: Deploy to EKS
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
         env:
-          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+          DOCKER_TAG: ${{ github.run_number }}  # Semantic versioning for Docker build
+
+      - name: Run unit tests
+        run: mvn test
+        env:
+          UNIT_TEST_PASS_PERCENT: 80  # Set the unit test pass percentage threshold
+
+      - name: SAST (Static Application Security Testing)
+        uses: securecodewarrior/sca-sast-github-action@v2
+        with:
+          scan_name: 'Spring Boot SAST'
+          scan_file_path: 'target/*.jar'
+          scan_type: 'jar'
+          fail_on_severity: 'High'
+        if: success()  # Run only if the build is successful
+
+      - name: Dockerize
         run: |
-          mkdir -p ~/.kube
-          echo "$KUBE_CONFIG_DATA" | base64 --decode > ~/.kube/config
-          kubectl apply -f kubernetes/deployment.yaml
-          kubectl apply -f kubernetes/service.yaml
+          docker build -t my-spring-app:${DOCKER_TAG} .
+          docker tag my-spring-app:${DOCKER_TAG} 804677980227.dkr.ecr.us-east-1.amazonaws.com/demo-rbk:${DOCKER_TAG}
+
+      - name: Push Docker image to Amazon ECR
+        run: docker push 804677980227.dkr.ecr.us-east-1.amazonaws.com/demo-rbk:${DOCKER_TAG}
+
+      - name: Docker scanning
+        uses: docker-scan-action@v1
+        with:
+          image: 804677980227.dkr.ecr.us-east-1.amazonaws.com/demo-rbk:${DOCKER_TAG}
+          scan-result-file: 'docker-scan-result.json'
+        if: success()  # Run only if the build is successful
+
+      - name: Kubernetes manifest scanning
+        uses: aquasecurity/kube-scan@v0.4.0
+        with:
+          output_format: 'json'
+          output_file: 'kube-scan-result.json'
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+        if: success()  # Run only if the build is successful
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v2
+        with:
+          name: scan-results
+          path: |
+            docker-scan-result.json
+            kube-scan-result.json
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install kubectl
+        uses: aws/k8s-set-context@v1
+        with:
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Deploy with ArgoCD
+        run: |
+          argocd app create my-spring-app \
+            --repo https://github.com/naveen2314/rak-demo \
+            --path ./kubernetes \
+            --dest-server https://kubernetes.default.svc \
+            --dest-namespace rak-sample \
+            --sync-policy auto \
+            --auto-prune
