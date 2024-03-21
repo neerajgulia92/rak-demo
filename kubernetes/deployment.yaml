@@ -15,6 +15,6 @@ spec:
     spec:
      containers:
      - name: my-spring-app
-       image:  804677980227.dkr.ecr.us-east-1.amazonaws.com/demo-rbk:v1.1.0
+       image: 804677980227.dkr.ecr.us-east-1.amazonaws.com/demo-rbk:${DOCKER_TAG}
        ports:
        - containerPort: 8080
