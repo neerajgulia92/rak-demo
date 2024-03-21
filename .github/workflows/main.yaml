@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        #uses: actions/checkout@v2
-        uses: ./.github/action/naveen2314@main
+        uses: actions/checkout@v2
+        #uses: ./.github/action/naveen2314@main
 
       - name: Secret scanning
         uses: gregorriegler/github-action-secrets-scanner@v1
