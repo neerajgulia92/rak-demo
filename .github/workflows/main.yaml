@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -67,23 +66,28 @@ jobs:
           output_file: 'kube-scan-result.json'
           kubeconfig: ${{ secrets.KUBECONFIG }}
         if: success()  # Run only if the build is successful
-
-      - name: Upload scan results
-        uses: actions/upload-artifact@v2
-        with:
-          name: scan-results
-          path: |
-            docker-scan-result.json
-            kube-scan-result.json
+      
+      - name: Upload scan results to S3
+        env:
+          AWS_REGION: "us-east-1"
+          AWS_BUCKET_NAME: 'iac-pipeline-backend'
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+              aws s3 cp docker-scan-result.json s3://$AWS_BUCKET_NAME/
+              aws s3 cp kube-scan-result.json s3://$AWS_BUCKET_NAME/
+          
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Install kubectl
-        uses: aws/k8s-set-context@v1
+      - name: Install kubectl and Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
         with:
-          kubeconfig: ${{ secrets.KUBECONFIG }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: 'us-west-2'
 
       - name: Deploy with ArgoCD
         run: |
