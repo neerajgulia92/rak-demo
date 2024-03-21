@@ -90,11 +90,14 @@ jobs:
           aws-region: 'us-west-2'
 
       - name: Deploy with ArgoCD
-        run: |
-          argocd app create my-spring-app \
-            --repo https://github.com/naveen2314/rak-demo \
-            --path ./kubernetes \
-            --dest-server https://kubernetes.default.svc \
-            --dest-namespace rak-sample \
-            --sync-policy auto \
-            --auto-prune
+        uses: argoproj-labs/argocd-deploy-action@v2
+        with:
+          argocd-server: 'https://your-argocd-server-url'
+          argocd-token: ${{ secrets.ARGOCD_TOKEN }}
+          app-name: 'my-spring-app'
+          app-source: 'https://github.com/naveen2314/rak-demo'
+          app-path: './kubernetes'
+          app-dest-server: 'https://kubernetes.default.svc'
+          app-dest-namespace: 'rak-sample'
+          app-sync-policy: 'auto'
+          app-auto-prune: 'true'
