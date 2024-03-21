@@ -89,15 +89,3 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: 'us-west-2'
 
-      - name: Deploy with ArgoCD
-        uses: argoproj-labs/argocd-deploy-action@v2
-        with:
-          argocd-server: 'https://your-argocd-server-url'
-          argocd-token: ${{ secrets.ARGOCD_TOKEN }}
-          app-name: 'my-spring-app'
-          app-source: 'https://github.com/naveen2314/rak-demo'
-          app-path: './kubernetes'
-          app-dest-server: 'https://kubernetes.default.svc'
-          app-dest-namespace: 'rak-sample'
-          app-sync-policy: 'auto'
-          app-auto-prune: 'true'
